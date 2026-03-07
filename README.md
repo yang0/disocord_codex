@@ -11,6 +11,17 @@ An independent sidecar service that bridges a Discord bot to a Codex session run
 - Sends the last 100 tmux lines when a task finishes
 - Runs independently from OpenClaw so the bridge still works if OpenClaw is down
 
+## Runtime Shortcuts
+
+When Codex is already running, the bot supports these shortcuts:
+
+- `$esc`: send `Esc` to interrupt the current Codex run
+- `$q <text>`: add a message to the queue and send it after the current run finishes
+- `$qx`: clear the queued messages
+- `$insert <text>`: inject a message into the currently running Codex session immediately
+
+If Codex is still running and the user sends a normal message instead of a shortcut, the bot responds with the shortcut help text plus the latest 100 tmux lines instead of silently queueing that message.
+
 ## Requirements
 
 - Python 3.10+
