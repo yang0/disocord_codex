@@ -39,7 +39,7 @@ class Settings:
             tmux_session=env.get("TMUX_SESSION", "oc_backup"),
             tmux_window=int(env.get("TMUX_WINDOW", "0")),
             tmux_pane=int(env.get("TMUX_PANE", "0")),
-            check_interval_sec=int(env.get("CHECK_INTERVAL_SEC", "60")),
+            check_interval_sec=int(env.get("CHECK_INTERVAL_SEC", "5")),
             progress_interval_sec=int(env.get("PROGRESS_INTERVAL_SEC", "300")),
             progress_capture_lines=int(env.get("PROGRESS_CAPTURE_LINES", "220")),
             completion_lines=int(env.get("COMPLETION_LINES", "100")),

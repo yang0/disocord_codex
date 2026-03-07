@@ -38,3 +38,15 @@ def test_settings_reads_tmux_bin_from_env(tmp_path: Path):
     )
 
     assert settings.tmux_bin == '/custom/tmux'
+
+
+def test_settings_default_check_interval_is_5_seconds(tmp_path: Path):
+    settings = Settings.from_env(
+        {
+            'DISCORD_BOT_TOKEN': 'token',
+            'DISCORD_CHANNEL_ID': '123',
+        },
+        base_dir=tmp_path,
+    )
+
+    assert settings.check_interval_sec == 5
