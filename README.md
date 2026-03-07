@@ -59,15 +59,16 @@ pytest -q
 
 ## systemd
 
-示例 unit 在 `systemd/discord-codex-bridge.service`。
+示例 unit 在 `systemd/discord-codex-bridge.service`，按 `systemd --user` 部署。
 
 安装后：
 
 ```bash
-sudo cp systemd/discord-codex-bridge.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now discord-codex-bridge.service
-sudo systemctl status discord-codex-bridge.service
+mkdir -p ~/.config/systemd/user
+cp systemd/discord-codex-bridge.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now discord-codex-bridge.service
+systemctl --user status discord-codex-bridge.service
 ```
 
 ## 设计边界

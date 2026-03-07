@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=yang0
 WorkingDirectory=/home/yang0/projectHome/disocord_codex
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/yang0/projectHome/disocord_codex/.venv/bin/python -m discord_codex_bridge --env-file /home/yang0/projectHome/disocord_codex/.env
@@ -13,4 +12,4 @@ Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
