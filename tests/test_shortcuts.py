@@ -16,6 +16,12 @@ def test_parse_queue_command_with_payload():
     assert parse_shortcut_command('$q  ship it  ') == ShortcutCommand(name='queue', argument='ship it')
 
 
+def test_parse_progress_settings_command():
+    assert parse_shortcut_command('p') == ShortcutCommand(name='progress_settings', argument='')
+    assert parse_shortcut_command('p 60 200') == ShortcutCommand(name='progress_settings', argument='60 200')
+    assert parse_shortcut_command('$p 60 200') == ShortcutCommand(name='progress_settings', argument='60 200')
+
+
 def test_parse_queue_clear_command():
     assert parse_shortcut_command('qx') == ShortcutCommand(name='queue_clear', argument='')
     assert parse_shortcut_command('$qx') == ShortcutCommand(name='queue_clear', argument='')
@@ -45,6 +51,7 @@ def test_parse_does_not_misjudge_glued_text_as_shortcuts():
     assert parse_shortcut_command('hello') is None
     assert parse_shortcut_command('aixxx') is None
     assert parse_shortcut_command('f100') is None
+    assert parse_shortcut_command('p60 200') is None
     assert parse_shortcut_command('qhello') is None
     assert parse_shortcut_command('escnow') is None
 

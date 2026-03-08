@@ -5,6 +5,7 @@ import pytest
 
 from discord_codex_bridge.ai import build_responses_api_url, load_codex_model_config
 from discord_codex_bridge.config import Settings, load_bridge_routes, load_env_file
+from discord_codex_bridge.state import JsonStateStore
 from discord_codex_bridge.shortcuts import parse_shortcut_command
 from discord_codex_bridge.summary import split_discord_message
 
@@ -214,3 +215,16 @@ def test_parse_shortcut_command_supports_help_and_short_insert():
 
 def test_parse_shortcut_command_no_longer_accepts_legacy_insert():
     assert parse_shortcut_command('$insert refine it') is None
+
+
+def test_json_state_store_persists_progress_setting_overrides(tmp_path: Path):
+    store = JsonStateStore(tmp_path / 'state.json')
+    state = store.load()
+    state.progress_interval_sec_override = 60
+    state.progress_capture_lines_override = 200
+    store.save(state)
+
+    reloaded = store.load()
+
+    assert reloaded.progress_interval_sec_override == 60
+    assert reloaded.progress_capture_lines_override == 200

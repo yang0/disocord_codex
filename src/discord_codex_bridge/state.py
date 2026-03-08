@@ -21,6 +21,8 @@ class JsonStateStore:
         return BridgeState(
             active=ActiveTask(**active_payload) if active_payload else None,
             queue=[DiscordRequest(**item) for item in queue_payload],
+            progress_interval_sec_override=payload.get("progress_interval_sec_override"),
+            progress_capture_lines_override=payload.get("progress_capture_lines_override"),
         )
 
     def save(self, state: BridgeState) -> None:
@@ -31,6 +33,8 @@ class JsonStateStore:
                 {
                     "active": asdict(state.active) if state.active else None,
                     "queue": [asdict(item) for item in state.queue],
+                    "progress_interval_sec_override": state.progress_interval_sec_override,
+                    "progress_capture_lines_override": state.progress_capture_lines_override,
                 },
                 ensure_ascii=False,
                 indent=2,

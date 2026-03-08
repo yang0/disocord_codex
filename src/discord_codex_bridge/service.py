@@ -72,6 +72,10 @@ LOGGER = logging.getLogger(__name__)
 DISPATCH_STARTUP_GRACE_SEC = 3
 DEFAULT_FETCH_LINES = 100
 MAX_FETCH_LINES = 1000
+MIN_PROGRESS_INTERVAL_SEC = 5
+MAX_PROGRESS_INTERVAL_SEC = 3600
+MIN_PROGRESS_CAPTURE_LINES = 20
+MAX_PROGRESS_CAPTURE_LINES = 2000
 
 
 @dataclass(frozen=True)
@@ -178,6 +182,12 @@ class DiscordCodexBridge(discord.Client):
             command = parse_shortcut_command(content)
             if command and command.name == "help":
                 await self._handle_help_message(runtime=runtime)
+                return
+            if command and command.name == "progress_settings":
+                await self._handle_progress_settings_message(
+                    command=command,
+                    runtime=runtime,
+                )
                 return
             if command and command.name == "ai":
                 await self._handle_ai_message(
@@ -292,7 +302,7 @@ class DiscordCodexBridge(discord.Client):
 
     def _update_runtime_route(self, runtime: BridgeRuntime, route: BridgeRouteConfig) -> None:
         runtime.route = route
-        runtime.controller.progress_interval_sec = route.progress_interval_sec
+        runtime.controller.progress_interval_sec = self._runtime_progress_interval_sec(runtime)
 
     def _route_identity_changed(self, current: BridgeRouteConfig, incoming: BridgeRouteConfig) -> bool:
         return (
@@ -308,9 +318,10 @@ class DiscordCodexBridge(discord.Client):
 
     def _create_runtime(self, route: BridgeRouteConfig) -> BridgeRuntime:
         state_store = JsonStateStore(route.state_path)
+        state = state_store.load()
         controller = BridgeController(
-            progress_interval_sec=route.progress_interval_sec,
-            state=state_store.load(),
+            progress_interval_sec=state.progress_interval_sec_override or route.progress_interval_sec,
+            state=state,
         )
         return BridgeRuntime(route=route, controller=controller, state_store=state_store)
 
@@ -374,7 +385,7 @@ class DiscordCodexBridge(discord.Client):
                 progress_text = await asyncio.to_thread(
                     self.tmux.capture_tail,
                     target,
-                    lines=runtime.route.progress_capture_lines,
+                    lines=self._runtime_progress_capture_lines(runtime),
                 )
                 progress_summary = summarize_progress(progress_text)
             effects = runtime.controller.observe(active_running=True, now=now, progress_summary=progress_summary)
@@ -426,7 +437,7 @@ class DiscordCodexBridge(discord.Client):
         if active is None:
             return False
         last_progress_at = datetime.fromisoformat(active.last_progress_at)
-        return (now - last_progress_at).total_seconds() >= runtime.route.progress_interval_sec
+        return (now - last_progress_at).total_seconds() >= self._runtime_progress_interval_sec(runtime)
 
     async def _execute_effects(self, effects, *, runtime: BridgeRuntime | None = None) -> None:
         runtime = runtime or self.primary_runtime
@@ -514,6 +525,37 @@ class DiscordCodexBridge(discord.Client):
     async def _handle_help_message(self, *, runtime: BridgeRuntime) -> None:
         await self._send_runtime_message(runtime, build_shortcut_help_document())
 
+    async def _handle_progress_settings_message(
+        self,
+        *,
+        command: ShortcutCommand,
+        runtime: BridgeRuntime,
+    ) -> None:
+        parsed = self._parse_progress_settings(command.argument)
+        if parsed is None:
+            await self._send_runtime_message(
+                runtime,
+                "用法：`p` 查看当前设置，或 `p <interval_sec> <lines>` 更新设置（interval 5-3600 秒，lines 20-2000 行）。",
+            )
+            return
+
+        if parsed == "show":
+            await self._send_runtime_message(
+                runtime,
+                f"当前自动抓取：每 {self._runtime_progress_interval_sec(runtime)} 秒，抓取 {self._runtime_progress_capture_lines(runtime)} 行。",
+            )
+            return
+
+        interval_sec, capture_lines = parsed
+        runtime.controller.state.progress_interval_sec_override = interval_sec
+        runtime.controller.state.progress_capture_lines_override = capture_lines
+        runtime.controller.progress_interval_sec = interval_sec
+        runtime.state_store.save(runtime.controller.state)
+        await self._send_runtime_message(
+            runtime,
+            f"已更新当前路由自动抓取：每 {interval_sec} 秒，抓取 {capture_lines} 行。",
+        )
+
     def _parse_fetch_lines(self, raw_value: str) -> int | None:
         value = raw_value.strip()
         if not value:
@@ -527,6 +569,33 @@ class DiscordCodexBridge(discord.Client):
         if parsed <= 0:
             return None
         return min(parsed, MAX_FETCH_LINES)
+
+    def _parse_progress_settings(self, raw_value: str) -> tuple[int, int] | str | None:
+        value = raw_value.strip()
+        if not value:
+            return "show"
+
+        parts = value.split()
+        if len(parts) != 2:
+            return None
+
+        try:
+            interval_sec = int(parts[0])
+            capture_lines = int(parts[1])
+        except ValueError:
+            return None
+
+        if not (MIN_PROGRESS_INTERVAL_SEC <= interval_sec <= MAX_PROGRESS_INTERVAL_SEC):
+            return None
+        if not (MIN_PROGRESS_CAPTURE_LINES <= capture_lines <= MAX_PROGRESS_CAPTURE_LINES):
+            return None
+        return interval_sec, capture_lines
+
+    def _runtime_progress_interval_sec(self, runtime: BridgeRuntime) -> int:
+        return runtime.controller.state.progress_interval_sec_override or runtime.route.progress_interval_sec
+
+    def _runtime_progress_capture_lines(self, runtime: BridgeRuntime) -> int:
+        return runtime.controller.state.progress_capture_lines_override or runtime.route.progress_capture_lines
 
     async def _capture_ai_snapshot(self, *, runtime: BridgeRuntime, now: datetime) -> RuntimeSnapshot | None:
         try:

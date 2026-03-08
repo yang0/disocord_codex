@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=%h/projectHome/discord-codex-bridge
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=%h/projectHome/discord-codex-bridge/src
-ExecStart=%h/projectHome/disocord_codex/.venv/bin/python -m discord_codex_bridge --env-file %h/projectHome/disocord_codex/.env
+ExecStart=%h/projectHome/discord-codex-bridge/.venv/bin/python -m discord_codex_bridge --env-file %h/projectHome/discord-codex-bridge/.env
 Restart=always
 RestartSec=5
 

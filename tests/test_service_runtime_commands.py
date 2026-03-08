@@ -501,6 +501,66 @@ def test_fetch_command_rejects_invalid_line_count(tmp_path: Path):
     assert messages == ['用法：`f [lines]`，其中 `lines` 必须是正整数。']
 
 
+def test_progress_settings_command_reports_current_route_settings(tmp_path: Path):
+    tmux = FakeTmux()
+    bridge = make_bridge(tmp_path, tmux=tmux)
+    runtime = bridge.route_runtime(123)
+    assert runtime is not None
+    messages: list[str] = []
+
+    async def fake_send(_runtime, text: str) -> None:
+        messages.append(text)
+
+    bridge._send_runtime_message = fake_send  # type: ignore[method-assign]
+
+    asyncio.run(bridge.on_message(make_message('p')))
+
+    assert tmux.sent_messages == []
+    assert messages == ['当前自动抓取：每 300 秒，抓取 220 行。']
+
+
+def test_progress_settings_command_updates_runtime_and_state(tmp_path: Path):
+    tmux = FakeTmux()
+    bridge = make_bridge(tmp_path, tmux=tmux)
+    runtime = bridge.route_runtime(123)
+    assert runtime is not None
+    messages: list[str] = []
+
+    async def fake_send(_runtime, text: str) -> None:
+        messages.append(text)
+
+    bridge._send_runtime_message = fake_send  # type: ignore[method-assign]
+
+    asyncio.run(bridge.on_message(make_message('p 60 200')))
+
+    assert tmux.sent_messages == []
+    assert runtime.controller.progress_interval_sec == 60
+    assert runtime.controller.state.progress_interval_sec_override == 60
+    assert runtime.controller.state.progress_capture_lines_override == 200
+    assert messages == ['已更新当前路由自动抓取：每 60 秒，抓取 200 行。']
+
+
+def test_progress_settings_command_rejects_invalid_values(tmp_path: Path):
+    tmux = FakeTmux()
+    bridge = make_bridge(tmp_path, tmux=tmux)
+    runtime = bridge.route_runtime(123)
+    assert runtime is not None
+    messages: list[str] = []
+
+    async def fake_send(_runtime, text: str) -> None:
+        messages.append(text)
+
+    bridge._send_runtime_message = fake_send  # type: ignore[method-assign]
+
+    asyncio.run(bridge.on_message(make_message('p 1 10')))
+
+    assert tmux.sent_messages == []
+    assert runtime.controller.progress_interval_sec == 300
+    assert runtime.controller.state.progress_interval_sec_override is None
+    assert runtime.controller.state.progress_capture_lines_override is None
+    assert messages == ['用法：`p` 查看当前设置，或 `p <interval_sec> <lines>` 更新设置（interval 5-3600 秒，lines 20-2000 行）。']
+
+
 def test_plain_message_does_not_start_new_request_while_completion_output_is_still_settling(tmp_path: Path):
     bridge = make_bridge(tmp_path)
     runtime = bridge.route_runtime(123)

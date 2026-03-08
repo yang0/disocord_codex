@@ -48,6 +48,8 @@ class ActiveTask:
 class BridgeState:
     active: ActiveTask | None = None
     queue: list[DiscordRequest] = field(default_factory=list)
+    progress_interval_sec_override: int | None = None
+    progress_capture_lines_override: int | None = None
 
 
 @dataclass(frozen=True)

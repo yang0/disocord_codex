@@ -28,6 +28,8 @@ def parse_shortcut_command(text: str) -> ShortcutCommand | None:
         return ShortcutCommand(name="ai", argument=argument)
     if command == "f":
         return ShortcutCommand(name="fetch", argument=argument)
+    if command == "p":
+        return ShortcutCommand(name="progress_settings", argument=argument)
     if command == "q":
         return ShortcutCommand(name="queue", argument=argument)
     if command == "i":
@@ -41,6 +43,7 @@ def build_shortcut_help_document() -> str:
         "- `h`：查看快捷方式说明文档\n"
         "- `ai <text>`：直接调用 AI 处理本地上下文，不发给 tmux\n"
         "- `f [lines]`：直接抓取当前 tmux 最新输出，默认 100 行\n"
+        "- `p [interval_sec lines]`：查看或设置自动抓取的时间间隔和抓取行数\n"
         "- `e`：中断当前正在运行的 Codex\n"
         "- `q <text>`：放入队列，等当前任务结束后自动发送\n"
         "- `qx`：清空当前队列\n"

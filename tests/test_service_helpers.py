@@ -256,3 +256,35 @@ def test_reconcile_waits_for_non_running_output_to_stabilize_before_completion(t
     assert second.latest_output == 'final answer'
     assert runtime.controller.state.active is None
     assert any(effect.kind == 'discord_message' for effect in executed)
+
+
+def test_progress_setting_overrides_are_restored_after_restart(tmp_path: Path):
+    route_file = tmp_path / 'bridges.local.json'
+    write_routes(
+        route_file,
+        [
+            {
+                'name': 'alpha',
+                'enabled': True,
+                'channel_id': 111,
+                'tmux_session': 'session_alpha',
+                'state_path': './state/alpha.json',
+            }
+        ],
+    )
+    settings = make_settings(tmp_path, route_file=route_file)
+    bridge = DiscordCodexBridge(settings, tmux_bridge=FakeTmux(), route_loader=load_bridge_routes)
+    runtime = bridge.route_runtime(111)
+    assert runtime is not None
+    runtime.controller.state.progress_interval_sec_override = 60
+    runtime.controller.state.progress_capture_lines_override = 200
+    runtime.controller.progress_interval_sec = 60
+    runtime.state_store.save(runtime.controller.state)
+
+    restarted = DiscordCodexBridge(settings, tmux_bridge=FakeTmux(), route_loader=load_bridge_routes)
+    restarted_runtime = restarted.route_runtime(111)
+    assert restarted_runtime is not None
+
+    assert restarted_runtime.controller.progress_interval_sec == 60
+    assert restarted_runtime.controller.state.progress_interval_sec_override == 60
+    assert restarted_runtime.controller.state.progress_capture_lines_override == 200
