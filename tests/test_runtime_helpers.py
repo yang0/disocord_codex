@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from discord_codex_bridge.ai import build_responses_api_url, load_codex_model_config
+from discord_codex_bridge.ai import (
+    AiCommandRunner,
+    AiRequestContext,
+    CodexModelConfig,
+    build_responses_api_url,
+    load_codex_model_config,
+)
 from discord_codex_bridge.config import Settings, load_bridge_routes, load_env_file
 from discord_codex_bridge.state import JsonStateStore
 from discord_codex_bridge.shortcuts import parse_shortcut_command
@@ -52,6 +58,17 @@ def test_settings_default_check_interval_is_5_seconds(tmp_path: Path):
     )
 
     assert settings.check_interval_sec == 5
+
+
+def test_settings_default_completion_lines_is_50(tmp_path: Path):
+    settings = Settings.from_env(
+        {
+            'DISCORD_BOT_TOKEN': 'token',
+        },
+        base_dir=tmp_path,
+    )
+
+    assert settings.completion_lines == 50
 
 
 def test_settings_default_bridges_config_path_is_local_json(tmp_path: Path):
@@ -196,6 +213,89 @@ def test_load_codex_model_config_reads_model_and_auth_from_codex_files(tmp_path:
     assert config.base_url == 'https://gmn.example.com'
     assert config.responses_api_url == 'https://gmn.example.com/v1/responses'
     assert config.api_key == 'secret-key'
+
+
+def test_load_codex_model_config_reads_optional_provider_headers(tmp_path: Path):
+    codex_dir = tmp_path / '.codex'
+    codex_dir.mkdir()
+    (codex_dir / 'config.toml').write_text(
+        '\n'.join(
+            [
+                'model = "gpt-5.4"',
+                'model_provider = "gmn"',
+                '',
+                '[model_providers.gmn]',
+                'name = "gmn"',
+                'base_url = "https://gmn.example.com"',
+                'wire_api = "responses"',
+                'requires_openai_auth = true',
+                '',
+                '[model_providers.gmn.headers]',
+                'User-Agent = "custom-agent/1.0"',
+                'X-Debug = "enabled"',
+            ]
+        )
+    )
+    (codex_dir / 'auth.json').write_text(json.dumps({'OPENAI_API_KEY': 'secret-key'}))
+
+    config = load_codex_model_config(
+        config_path=codex_dir / 'config.toml',
+        auth_path=codex_dir / 'auth.json',
+    )
+
+    assert config.extra_headers == {
+        'User-Agent': 'custom-agent/1.0',
+        'X-Debug': 'enabled',
+    }
+
+
+def test_ai_runner_sends_default_user_agent_when_provider_headers_missing(tmp_path: Path):
+    captured: dict[str, object] = {}
+
+    def fake_post_json(url: str, payload: dict[str, object], headers: dict[str, str]) -> dict[str, object]:
+        captured['url'] = url
+        captured['payload'] = payload
+        captured['headers'] = dict(headers)
+        return {'output_text': 'ok', 'output': []}
+
+    runner = AiCommandRunner(
+        model_config=CodexModelConfig(
+            model='gpt-5.4',
+            base_url='https://gmn.example.com',
+            responses_api_url='https://gmn.example.com/v1/responses',
+            api_key='secret-key',
+            extra_headers={},
+        ),
+        post_json=fake_post_json,
+    )
+
+    reply = runner._run_sync(
+        AiRequestContext(
+            route_name='alpha',
+            tmux_session='session_alpha',
+            instruction='read file',
+            author_name='tester',
+            workspace_root=tmp_path,
+            latest_output='tail',
+            running=False,
+        )
+    )
+
+    assert reply == 'ok'
+    assert captured['url'] == 'https://gmn.example.com/v1/responses'
+    payload = captured['payload']
+    assert isinstance(payload, dict)
+    assert payload['model'] == 'gpt-5.4'
+    assert isinstance(payload['tools'], list)
+    assert isinstance(payload['input'], list)
+    assert payload['input'][0]['role'] == 'user'
+    assert payload['input'][0]['content'][0]['type'] == 'input_text'
+    assert '用户请求: read file' in payload['input'][0]['content'][0]['text']
+    assert captured['headers'] == {
+        'Authorization': 'Bearer secret-key',
+        'Content-Type': 'application/json',
+        'User-Agent': 'codex-rs/1.0.7',
+    }
 
 
 def test_build_responses_api_url_preserves_existing_v1_suffix():

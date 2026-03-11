@@ -5,7 +5,7 @@
     "check_interval_sec": 5,
     "progress_interval_sec": 300,
     "progress_capture_lines": 220,
-    "completion_lines": 100
+    "completion_lines": 50
   },
   "bridges": [
     {

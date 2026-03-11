@@ -42,7 +42,7 @@ def build_shortcut_help_document() -> str:
         "可用快捷方式：\n"
         "- `h`：查看快捷方式说明文档\n"
         "- `ai <text>`：直接调用 AI 处理本地上下文，不发给 tmux\n"
-        "- `f [lines]`：直接抓取当前 tmux 最新输出，默认 100 行\n"
+        "- `f [lines]`：直接抓取当前 tmux 最新输出，默认 50 行\n"
         "- `p [interval_sec lines]`：查看或设置自动抓取的时间间隔和抓取行数\n"
         "- `e`：中断当前正在运行的 Codex\n"
         "- `q <text>`：放入队列，等当前任务结束后自动发送\n"
@@ -55,8 +55,8 @@ def build_shortcut_help_document() -> str:
 def build_running_shortcut_help(latest_output: str) -> str:
     clean_output = latest_output.strip() or "(latest tmux output is empty)"
     return (
-        "Codex 仍在运行。当前不会自动接收普通消息。\n"
+        "Codex 仍在运行。普通消息默认会立即插入到当前运行中的 Codex。\n"
         f"{build_shortcut_help_document()}\n\n"
-        "下面附 tmux 最新 100 行：\n\n"
+        "下面附 tmux 最新 50 行：\n\n"
         f"{clean_output}"
     )

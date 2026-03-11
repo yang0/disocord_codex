@@ -70,7 +70,7 @@ from discord_codex_bridge.tmux_bridge import RUNNING_MARKER, RUNNING_PROBE_LINES
 
 LOGGER = logging.getLogger(__name__)
 DISPATCH_STARTUP_GRACE_SEC = 3
-DEFAULT_FETCH_LINES = 100
+DEFAULT_FETCH_LINES = 50
 MAX_FETCH_LINES = 1000
 MIN_PROGRESS_INTERVAL_SEC = 5
 MAX_PROGRESS_INTERVAL_SEC = 3600
@@ -217,6 +217,7 @@ class DiscordCodexBridge(discord.Client):
                     snapshot=snapshot,
                     now=now,
                     runtime=runtime,
+                    fallback_content=content,
                 )
                 return
 
@@ -717,6 +718,7 @@ class DiscordCodexBridge(discord.Client):
         snapshot: RuntimeSnapshot,
         now: datetime,
         runtime: BridgeRuntime | None = None,
+        fallback_content: str = "",
     ) -> None:
         runtime = runtime or self._resolve_runtime_from_message(message)
         if runtime is None:
@@ -760,6 +762,17 @@ class DiscordCodexBridge(discord.Client):
                 runtime.route.tmux_window,
                 runtime.route.tmux_pane,
                 command.argument,
+            )
+            await self._send_runtime_message(runtime, "已插入到运行中的 Codex。")
+            return
+
+        if command is None and fallback_content:
+            await asyncio.to_thread(
+                self.tmux.send_message,
+                runtime.route.tmux_session,
+                runtime.route.tmux_window,
+                runtime.route.tmux_pane,
+                fallback_content,
             )
             await self._send_runtime_message(runtime, "已插入到运行中的 Codex。")
             return

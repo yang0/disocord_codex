@@ -59,6 +59,8 @@ def test_parse_does_not_misjudge_glued_text_as_shortcuts():
 def test_running_help_includes_latest_output():
     text = build_running_shortcut_help('line1\nline2')
 
+    assert '普通消息默认会立即插入' in text
+    assert '最新 50 行' in text
     assert 'h' in text
     assert 'e' in text
     assert 'q <text>' in text
@@ -73,4 +75,5 @@ def test_shortcut_help_document_uses_short_insert_alias():
 
     assert 'h' in text
     assert 'i <text>' in text
+    assert '默认 50 行' in text
     assert '$insert' not in text

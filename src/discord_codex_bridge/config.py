@@ -40,7 +40,7 @@ class Settings:
             check_interval_sec=int(env.get("CHECK_INTERVAL_SEC", "5")),
             progress_interval_sec=int(env.get("PROGRESS_INTERVAL_SEC", "300")),
             progress_capture_lines=int(env.get("PROGRESS_CAPTURE_LINES", "220")),
-            completion_lines=int(env.get("COMPLETION_LINES", "100")),
+            completion_lines=int(env.get("COMPLETION_LINES", "50")),
             bridges_config_path=bridges_config_path,
         )
 

@@ -16,7 +16,7 @@
 
 - `h`：查看快捷方式说明文档
 - `ai <text>`：直接调用 AI 处理本地上下文，不把消息发给 tmux
-- `f [lines]`：直接抓取当前 tmux pane 的尾部输出，默认最后 100 行
+- `f [lines]`：直接抓取当前 tmux pane 的尾部输出，默认最后 50 行
 - `p`：查看当前路由的自动抓取设置
 - `p <interval_sec> <lines>`：设置当前路由自动抓取的时间间隔和抓取行数
 - `e`：发送 `Esc` 中断当前运行
@@ -24,7 +24,7 @@
 - `qx`：清空该路由自己的排队消息
 - `i <text>`：立即把消息插入当前正在运行的 Codex 会话
 
-如果某条路由仍在运行，而用户发送的是普通消息，bot 会返回快捷指令提示和最新 tmux 输出片段，而不是静默排队。
+如果某条路由仍在运行，而用户发送的是普通消息，bot 会默认把这条消息立即插入当前 Codex 会话；如果你想等当前任务结束后再发，请显式使用 `q <text>`。
 
 ### `ai` Shortcut
 
@@ -89,7 +89,7 @@ TMUX_PANE=0
 CHECK_INTERVAL_SEC=5
 PROGRESS_INTERVAL_SEC=300
 PROGRESS_CAPTURE_LINES=220
-COMPLETION_LINES=100
+COMPLETION_LINES=50
 ```
 
 说明：
@@ -111,7 +111,7 @@ COMPLETION_LINES=100
     "check_interval_sec": 5,
     "progress_interval_sec": 300,
     "progress_capture_lines": 220,
-    "completion_lines": 100
+    "completion_lines": 50
   },
   "bridges": [
     {

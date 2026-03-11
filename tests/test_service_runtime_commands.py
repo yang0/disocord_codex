@@ -92,8 +92,9 @@ def make_message(content: str, *, channel_id: int = 123) -> SimpleNamespace:
     )
 
 
-def test_running_plain_message_returns_shortcut_help_and_latest_output(tmp_path: Path):
-    bridge = make_bridge(tmp_path)
+def test_running_plain_message_sends_message_immediately(tmp_path: Path):
+    tmux = FakeTmux()
+    bridge = make_bridge(tmp_path, tmux=tmux)
     runtime = bridge.route_runtime(123)
     assert runtime is not None
     messages: list[str] = []
@@ -111,12 +112,13 @@ def test_running_plain_message_returns_shortcut_help_and_latest_output(tmp_path:
             snapshot=snapshot,
             now=datetime.now(timezone.utc),
             runtime=runtime,
+            fallback_content='hello',
         )
     )
 
     assert len(messages) == 1
-    assert 'e' in messages[0]
-    assert 'line1' in messages[0]
+    assert tmux.sent_messages == [('session_alpha', 0, 0, 'hello')]
+    assert '已插入到运行中的 Codex' in messages[0]
     assert bridge.controller.state.queue == []
 
 
@@ -396,7 +398,7 @@ def test_ai_command_bypasses_busy_tmux_state(tmp_path: Path):
     assert ai_runner.calls[0].running is True
 
 
-def test_fetch_command_returns_last_100_lines_by_default(tmp_path: Path):
+def test_fetch_command_returns_last_50_lines_by_default(tmp_path: Path):
     tmux = FakeTmux()
     bridge = make_bridge(tmp_path, tmux=tmux)
     runtime = bridge.route_runtime(123)
@@ -416,7 +418,7 @@ def test_fetch_command_returns_last_100_lines_by_default(tmp_path: Path):
 
     asyncio.run(bridge.on_message(make_message('f')))
 
-    assert requested_lines == [100]
+    assert requested_lines == [50]
     assert tmux.sent_messages == []
     assert runtime.controller.state.active is None
     assert runtime.controller.state.queue == []

@@ -18,6 +18,7 @@ MAX_AI_STEPS = 6
 MAX_FILE_SEARCH_RESULTS = 20
 MAX_READ_LINES = 220
 MAX_FILE_BYTES = 64_000
+DEFAULT_AI_USER_AGENT = 'codex-rs/1.0.7'
 SKIP_DIR_NAMES = {
     '.git',
     '.hg',
@@ -38,6 +39,7 @@ class CodexModelConfig:
     base_url: str
     responses_api_url: str
     api_key: str
+    extra_headers: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,15 @@ def load_codex_model_config(
     if wire_api and wire_api != 'responses':
         raise ValueError(f'Unsupported Codex provider wire_api: {wire_api}')
 
+    raw_headers = provider_config.get('headers', {}) if isinstance(provider_config, dict) else {}
+    extra_headers: dict[str, str] = {}
+    if isinstance(raw_headers, dict):
+        for key, value in raw_headers.items():
+            normalized_key = str(key).strip()
+            normalized_value = str(value).strip()
+            if normalized_key and normalized_value:
+                extra_headers[normalized_key] = normalized_value
+
     api_key = str(auth.get('OPENAI_API_KEY', '')).strip()
     if not api_key:
         raise ValueError('Codex auth missing OPENAI_API_KEY')
@@ -97,6 +108,7 @@ def load_codex_model_config(
         base_url=base_url,
         responses_api_url=build_responses_api_url(base_url),
         api_key=api_key,
+        extra_headers=extra_headers,
     )
 
 
@@ -127,7 +139,7 @@ class AiCommandRunner:
             model_config,
             {
                 'model': model_config.model,
-                'input': _build_ai_prompt(context),
+                'input': _build_responses_input(_build_ai_prompt(context)),
                 'tools': _tool_definitions(),
             },
         )
@@ -167,7 +179,9 @@ class AiCommandRunner:
         headers = {
             'Authorization': f'Bearer {model_config.api_key}',
             'Content-Type': 'application/json',
+            'User-Agent': DEFAULT_AI_USER_AGENT,
         }
+        headers.update(model_config.extra_headers)
         return self._post_json(model_config.responses_api_url, payload, headers)
 
 
@@ -365,6 +379,20 @@ def _resolve_child_path(workspace_root: Path, raw_path: str) -> Path:
     if candidate == workspace_root or workspace_root in candidate.parents:
         return candidate
     raise ValueError(f'路径超出当前工作目录：{raw_path}')
+
+
+def _build_responses_input(prompt: str) -> list[dict[str, Any]]:
+    return [
+        {
+            'role': 'user',
+            'content': [
+                {
+                    'type': 'input_text',
+                    'text': prompt,
+                }
+            ],
+        }
+    ]
 
 
 def _post_json(url: str, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
